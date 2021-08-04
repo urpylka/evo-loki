@@ -1,0 +1,57 @@
+version: '3.7'
+services:
+  grafana:
+    image:  grafana/grafana:latest
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+    user: "472"
+    networks:
+      backend:
+        ipv4_address: 172.16.2.2
+    volumes:
+      - data-grafana:/var/lib/grafana
+    environment:
+      - GF_PATHS_DATA=/var/lib/grafana
+      - GF_SECURITY_COOKIE_SECURE="true"
+      - GF_DEFAULT_INSTANCE_NAME=evo-loki
+      - GF_AUTH_PROXY_ENABLED=false
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - loki
+  loki:
+    image: grafana/loki:2.2.1
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - 3100:3100
+    restart: unless-stopped
+    networks:
+      backend:
+        ipv4_address: 172.16.2.3
+    volumes:
+      - ./loki-local-config.yaml:/etc/loki/local-config.yaml
+      - data-loki:/loki
+  promtail:
+    image: grafana/promtail:2.2.1
+    command: -config.file=/etc/promtail/config.yml
+    ports:
+      - 9080:9080
+    restart: unless-stopped
+    networks:
+      backend:
+        ipv4_address: 172.16.2.4
+    volumes:
+      - ./promtail-docker-config.yaml:/etc/promtail/config.yml
+      - /var/log:/var/log
+
+volumes:
+  data-loki:
+  data-grafana:
+
+networks:
+  backend:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.2.0/24
